@@ -5,7 +5,7 @@
 //  Created by Adam Law on 01/03/2020.
 //
 
-import Foundation
+import UIKit
 
 extension NSAttributedString {
 	func height(widthConstraint: CGFloat) -> CGFloat {

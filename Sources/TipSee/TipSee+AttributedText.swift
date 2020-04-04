@@ -5,6 +5,8 @@
 //  Created by Adam Law on 02/03/2020.
 //
 
+import Foundation
+
 extension TipSee {
 
 	/// shows a bubble which points to the given view

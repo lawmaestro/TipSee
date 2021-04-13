@@ -25,7 +25,7 @@ extension TipSee {
 		/// sets a constant default value or uses the target view layer corner radius if it is greater that the default value
 		case defaultOrGreater(default: CGFloat)
 		
-		/// no corner rradius
+		/// no corner radius
 		case none
 	}
 	
@@ -66,7 +66,7 @@ extension TipSee {
 			/// Whole tip (dimming and bubble) should be dismissed when user taps on the target area.
 			public var shouldFinishOnTargetAreaTap: Bool
 
-			/// Whole tip (dimming and bubble) should be dismissed when user taps on the surronding dimmed area.
+			/// Whole tip (dimming and bubble) should be dismissed when user taps on the surrounding dimmed area.
 			public var shouldFinishOnDimmedAreaTap: Bool
 
 			/// Whole tip (dimming and bubble) should be dismissed when user taps on the bubble.
@@ -97,11 +97,11 @@ extension TipSee {
 		/// buble's options, bubbles will get the default if nothings set
 		public var bubbles: Bubble
 		
-		/// default dim's color, each bubble could changes this color(optionaly) by setting the bubble.dimBackgroundColor
+		/// default dim's color, each bubble could changes this color(optionally) by setting the bubble.dimBackgroundColor
 		public var dimColor: UIColor
 		
 		/// bubble's life cycle.
-		/// forEver : bubbles will be visible and needs to be remove manualy by caliing dismiss(item), you can show multiple bubbles same time
+		/// forEver : bubbles will be visible and needs to be remove manually by calling dismiss(item), you can show multiple bubbles same time
 		/// untilNext: everytime show() function is called, previous bubble(if exists) will remove and new one will present
 		public var bubbleLiveDuration: BubbleLiveDuration
 		
@@ -112,7 +112,7 @@ extension TipSee {
 		/// keepTargetAreaCornerRadius : uses target view layer corner radius
 		/// constantRadius(radius) : sets constant radius for all
 		/// defaultOrGreater(default) : sets a constant default value or uses the target view layer corner radius if it is greater that the default value
-		/// none : no corner rradius
+		/// none : no corner radius
 		public var holeRadius: HoleRadius
 		
 		/// indicates bubble's margin

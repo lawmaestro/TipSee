@@ -20,11 +20,17 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 	
 	fileprivate var shadowLayerPath: CGPath?
 	fileprivate unowned let _window: UIWindow
-	fileprivate lazy var views: [TipItem] = {
-		attachToWindow()
-		return [TipItem]()
-	}()
-	
+
+	fileprivate var views: [TipItem] = [] {
+		didSet {
+			if views.isEmpty {
+				removeFromSuperview()
+			} else if superview == nil {
+				attachToWindow()
+			}
+		}
+	}
+
 	fileprivate lazy var bubbles = { return [BubbleView]() } ()
 	private var isBubbleAnimationInProgress = false
 	private var isHoleAnimationInProgress = false
@@ -48,7 +54,7 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 	///   - item: the view that we want to point at and a text for bubble
 	///   - bubbleOption: custom options for bubble
 	/// - Returns: generated item that can use to access to views or dismiss action
-	@discardableResult public func show(for view: TipTarget,text string: String, with bubbleOption: Options.Bubble? = nil) -> TipItem {
+	@discardableResult public func show(for view: TipTarget, text string: String, with bubbleOption: Options.Bubble? = nil) -> TipItem {
 		let viewToShow = createItem(for: view, text: string, with: bubbleOption)
 		return self.show(item: viewToShow, with: bubbleOption)
 	}
@@ -60,8 +66,8 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 		return TipItem(ID: UUID().uuidString, pointTo: target, contentView: TipSee.createLabel(for: text, with: bubbleOption, defaultOptions: .default()) as UIView, bubbleOptions: bubbleOption)
 	}
 	
-	private final func clearAllViews() {
-		guard  !views.isEmpty else{return}
+	private final func dismissAllViews() {
+		guard !views.isEmpty else { return }
 		views.forEach { (item) in
 			self.dismiss(item: item)
 		}
@@ -90,18 +96,28 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 	///   - bubbleOption: custom options for bubble
 	/// - Returns: generated item that can use to access to views or dismiss action
 	@discardableResult public func show(item: TipItem, with bubbleOption: Options.Bubble? = nil) -> TipItem {
+
 		let tip = TipItem(ID: item.ID.isEmpty ? UUID().uuidString: item.ID, pointTo: item.pointTo, contentView: item.contentView as UIView, bubbleOptions:  bubbleOption ?? item.bubbleOptions)
 		if options.bubbleLiveDuration == .untilNext {
-			clearAllViews()
+			dismissAllViews()
 		}
 		store(tip: tip, bubble: self.point(to: tip))
 		createHoleForVisibleViews()
 		return tip
 	}
 	
+	/// Checks whether a given tip item is already showing
+	///
+	/// - Parameters:
+	///   - item: describes the view being pointed to by the tip
+	public func isTipItemShowing(_ item: TipItem) -> Bool {
+		self.views.contains(item)
+	}
+
 	private final func attachToWindow() {
-		self.frame	= _window.frame
+		self.frame = _window.frame
 		self.tag = 9891248
+		self.alpha = 1.0
 		_window.addSubview(self)
 		_window.bringSubviewToFront(self)
 	}
@@ -112,7 +128,7 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 			self.alpha = 0
 		}) { done in
 			if done {
-				self.removeFromSuperview()
+				self.dismissAllViews()
 			}
 			self.onFinished?()
 		}
@@ -131,14 +147,13 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 	}
 	
 	private final func createHoleForVisibleViews() {
-		//shadowLayer?.removeFromSuperlayer()
+
 		guard superview != nil else { return }
 		let pathBigRect = UIBezierPath(rect: superview!.frame)
 		if self.views.isEmpty {
 			return
 		}
 		
-		///
 		var startPoint: CGPoint?
 		let viewsSet = Set(self.views.map({$0.pointTo}))
 		viewsSet.forEach { (targetArea) in
@@ -202,7 +217,7 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 		}
 	}
 	
-	/// points to the given(target) view by constrainting/Positioning the bubbleView and furthermore adds animation to newborn bubble
+	/// points to the given(target) view by constraining/positioning the bubbleView and furthermore adds animation to newborn bubble
 	///
 	/// - Parameter item: tip item
 	/// - Returns: baked bubble view
@@ -238,7 +253,7 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 		self.layoutIfNeeded()
 		
 		// align the arrow
-		let center  =  CGPoint(x: view.tipFrame.midX, y: view.tipFrame.midY)
+		let center = CGPoint(x: view.tipFrame.midX, y: view.tipFrame.midY)
 		
 		if [.top, .bottom].contains(arrowInstalledPosition) {
 			bubble.arrow = .init(position: .init(distance: .constant(center.x - bubble.frame.origin.x), edge: arrowInstalledPosition.toCGRectEdge()), size: .init(width: 10, height: 5))
@@ -258,40 +273,40 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 		})
 	}
 	
-	/// you can choose your prefered position for bubble to be shown, but sometimes there are no enough space there for showing that bubble, this will find a better place for bubbleView
+	/// you can choose your preferred position for bubble to be shown, but sometimes there are no enough space there for showing that bubble, this will find a better place for bubbleView
 	///
 	/// - Parameters:
 	///   - view: target view
 	/// - Returns: the better edge
-	private func findBetterSpace(view: TipTarget, preferredPosition: UIRectEdge?, bubblePrefereddSize: CGRect?) -> UIRectEdge {
-		let reletivePosition = view.tipFrame
+	private func findBetterSpace(view: TipTarget, preferredPosition: UIRectEdge?, bubblePreferredSize: CGRect?) -> UIRectEdge {
+		let relativePosition = view.tipFrame
 		
 		var edges = [(UIRectEdge, Bool)]()
 		
-		var left = options.safeAreaInsets.left + options.bubbles.padding.right + 16 + (bubblePrefereddSize?.width ?? 0)
+		var left = options.safeAreaInsets.left + options.bubbles.padding.right + 16 + (bubblePreferredSize?.width ?? 0)
 		
-		var right = _window.bounds.width - (options.safeAreaInsets.right + options.bubbles.padding.left + 16) - (bubblePrefereddSize?.width ?? 0)
+		var right = _window.bounds.width - (options.safeAreaInsets.right + options.bubbles.padding.left + 16) - (bubblePreferredSize?.width ?? 0)
 		
-		var top = options.safeAreaInsets.top + options.bubbles.padding.bottom + 16 + (bubblePrefereddSize?.height ?? 0)
+		var top = options.safeAreaInsets.top + options.bubbles.padding.bottom + 16 + (bubblePreferredSize?.height ?? 0)
 		
-		var bottom = _window.bounds.height - ( options.safeAreaInsets.bottom + options.bubbles.padding.top + 16) + (bubblePrefereddSize?.height ?? 0)
+		var bottom = _window.bounds.height - ( options.safeAreaInsets.bottom + options.bubbles.padding.top + 16) + (bubblePreferredSize?.height ?? 0)
 		if #available(iOS 11.0, *) {
-			bottom = _window.bounds.height - (_window.safeAreaInsets.bottom + options.safeAreaInsets.bottom + options.bubbles.padding.top + 16) + (bubblePrefereddSize?.height ?? 0)
+			bottom = _window.bounds.height - (_window.safeAreaInsets.bottom + options.safeAreaInsets.bottom + options.bubbles.padding.top + 16) + (bubblePreferredSize?.height ?? 0)
 			
-			top = options.safeAreaInsets.top + options.bubbles.padding.bottom + 16 + _window.safeAreaInsets.top + (bubblePrefereddSize?.height ?? 0)
+			top = options.safeAreaInsets.top + options.bubbles.padding.bottom + 16 + _window.safeAreaInsets.top + (bubblePreferredSize?.height ?? 0)
 			
-			right = _window.bounds.width - (_window.safeAreaInsets.right + options.safeAreaInsets.right + options.bubbles.padding.left + 16) - (bubblePrefereddSize?.width ?? 0)
+			right = _window.bounds.width - (_window.safeAreaInsets.right + options.safeAreaInsets.right + options.bubbles.padding.left + 16) - (bubblePreferredSize?.width ?? 0)
 			
-			left = options.safeAreaInsets.left + options.bubbles.padding.right + 16 + _window.safeAreaInsets.left + (bubblePrefereddSize?.width ?? 0)
+			left = options.safeAreaInsets.left + options.bubbles.padding.right + 16 + _window.safeAreaInsets.left + (bubblePreferredSize?.width ?? 0)
 		}
 		
-		edges.append((.left, reletivePosition.minX > left))
+		edges.append((.left, relativePosition.minX > left))
 		
-		edges.append((.top, reletivePosition.minY > top))
+		edges.append((.top, relativePosition.minY > top))
 		
-		edges.append((.right, reletivePosition.maxX < right))
+		edges.append((.right, relativePosition.maxX < right))
 		
-		edges.append((.bottom, reletivePosition.maxY < bottom))
+		edges.append((.bottom, relativePosition.maxY < bottom))
 		
 		guard let doIHaveEnoughSpace = edges.first(where: {$0.0 == preferredPosition ?? options.defaultBubblePosition}), doIHaveEnoughSpace.1 else {
 			return edges.first(where: {$0.0 != preferredPosition ?? options.defaultBubblePosition && $0.1})?.0 ?? options.defaultBubblePosition
@@ -299,7 +314,7 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 		return preferredPosition ?? options.defaultBubblePosition
 	}
 	
-	/// sets constraints for bubble view and the taget view
+	/// sets constraints for bubble view and the target view
 	///
 	/// - Parameters:
 	///   - view: target view
@@ -310,7 +325,7 @@ public class TipSee: UIView, TipSeeManagerProtocol {
 		let view = item.pointTo
 		let preferredPosition = item.bubbleOptions?.position
 		let padding = item.bubbleOptions?.padding ?? UIEdgeInsets.all(16)
-		let position = findBetterSpace(view: view, preferredPosition: preferredPosition, bubblePrefereddSize: bubble.frame)
+		let position = findBetterSpace(view: view, preferredPosition: preferredPosition, bubblePreferredSize: bubble.frame)
 		var arrowPoint: UIRectEdge = .right
 		
 		let targetFrame  = view.tipFrame
@@ -567,7 +582,7 @@ extension TipSee {
 		return bubble
 	}
 	
-	/// creates a labelView for useing inside a bubble
+	/// creates a labelView for using inside a bubble
 	///
 	/// - Parameter text: label text
 	/// - Returns: generated label view
@@ -590,7 +605,7 @@ extension TipSee {
 	/// finds bubble size
 	///
 	/// - Parameters:
-	///   - availableSpace: avialable space for bubble to fit in
+	///   - availableSpace: available space for bubble to fit in
 	///   - view: view that live in bubble view
 	/// - Returns: proper size
 	private func findBubbleProperSize(for view: UIView,on availableSpace: CGSize? = nil) -> CGSize {
@@ -610,7 +625,7 @@ extension BubbleView {
 	/// finds bubble size
 	///
 	/// - Parameters:
-	///   - availableSpace: avialable space for bubble to fit in
+	///   - availableSpace: available space for bubble to fit in
 	///   - view: view that live in bubble view
 	/// - Returns: updated bubble view
 	fileprivate func setProperSizeWith(content view: UIView,on availableSpace: CGSize? = nil) -> BubbleView {
